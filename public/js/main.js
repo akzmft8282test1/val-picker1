@@ -2,7 +2,7 @@
 const MAPS = [
   '어센트', '바인드', '헤이븐', '스플릿', '아이스박스', 
   '브리즈', '프랙처', '펄', '로터스', '어비스', 
-  '선셋', '디스트릭트', '카스바'
+  '선셋', '코로드', '서밋'
 ];
 
 // 발로란트 전체 요원 목록 (총 26명)
@@ -63,7 +63,16 @@ async function clearAllPlayers() {
   }
 }
 
-// 팀 생성 알고리즘 (밸런스 / 랜덤)
+// 배열 무작위 셔플 함수 (Fisher-Yates 알고리즘)
+function shuffleArray(array) {
+  for (let i = array.length - 1; i > 0; i--) {
+    const j = Math.floor(Math.random() * (i + 1));
+    [array[i], array[j]] = [array[j], array[i]];
+  }
+  return array;
+}
+
+// 팀 생성 알고리즘 (밸런스 / 랜덤 - 동티어 랜덤 셔플 적용)
 function generateTeams(type) {
   const tags = Array.from(document.querySelectorAll('.player-tag'));
   if (tags.length < 2) return alert('최소 2명 이상 등록해야 팀을 나눌 수 있습니다.');
@@ -78,15 +87,28 @@ function generateTeams(type) {
 
   if (type === 'random') {
     // 완전 랜덤
-    players.sort(() => Math.random() - 0.5);
+    shuffleArray(players);
     players.forEach((p, idx) => (idx % 2 === 0 ? teamA : teamB).push(p));
   } else {
-    // 티어 점수 기반 밸런스 분배
+    // 1. 플레이어를 먼저 무작위로 섞음 (동티어 플레이어 간 기본 순서를 매번 변경)
+    shuffleArray(players);
+
+    // 2. 티어 점수 내림차순 정렬 (점수가 같아도 1번 과정으로 인해 내부 순서가 매번 달라짐)
     players.sort((a, b) => b.score - a.score);
+
+    // 3. 점수 합산 분배 (양 팀 점수가 같을 때는 50% 확률로 무작위 배치)
     let sumA = 0, sumB = 0;
 
     players.forEach(p => {
-      if (sumA <= sumB) {
+      if (sumA === sumB) {
+        if (Math.random() < 0.5) {
+          teamA.push(p);
+          sumA += p.score;
+        } else {
+          teamB.push(p);
+          sumB += p.score;
+        }
+      } else if (sumA < sumB) {
         teamA.push(p);
         sumA += p.score;
       } else {
